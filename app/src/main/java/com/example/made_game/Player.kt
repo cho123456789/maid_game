@@ -5,7 +5,9 @@ import android.graphics.Paint
 import android.graphics.Rect
 
 class Player(
-    private val sprite: Sprite
+    private val sprite: Sprite,
+    private val displayWidth: Int = 160,
+    private val displayHeight: Int = 160
 ) {
 
     companion object {
@@ -20,21 +22,21 @@ class Player(
     var y = 300f
 
     // 이동 속도(px/s)
-    var speed = 180f
+    var speed = 80f
 
     // 현재 방향
     var direction = DOWN
 
     val width: Int
-        get() = sprite.frameWidth()
+        get() = displayWidth
 
     val height: Int
-        get() = sprite.frameHeight()
+        get() = displayHeight
 
     // 걷기 애니메이션 (8프레임)
     private val animation = SpriteAnimation(
         frameCount = 8,
-        frameDuration = 100
+        frameDuration = 1000
     )
 
     private var moving = false
@@ -78,8 +80,8 @@ class Player(
         val dst = Rect(
             x.toInt(),
             y.toInt(),
-            x.toInt() + sprite.frameWidth(),
-            y.toInt() + sprite.frameHeight()
+            x.toInt() + width,
+            y.toInt() + height
         )
 
         canvas.drawBitmap(

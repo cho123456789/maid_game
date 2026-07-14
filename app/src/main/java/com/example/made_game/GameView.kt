@@ -1,9 +1,11 @@
 package com.example.made_game
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import kotlin.math.cos
@@ -13,12 +15,9 @@ import kotlin.random.Random
 class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
 
     private lateinit var gameLoop: GameLoop
-    private lateinit var player: Player
-
-    // 랜덤 이동 방향과 다음 방향 변경까지의 시간(ms)
-    private var moveX = 0f
-    private var moveY = 0f
-    private var directionChangeTimer = 0L
+    private lateinit var background: Bitmap
+    private lateinit var maids: List<MovingMaid>
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
     init {
         holder.addCallback(this)
@@ -27,19 +26,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
     override fun surfaceCreated(holder: SurfaceHolder) {
 
-        val bitmap = BitmapFactory.decodeResource(
-            resources,
-            R.drawable.maid_test
-        )
+        background = BitmapFactory.decodeResource(resources, R.drawable.maid_background)
 
-        // 리소스 밀도에 의해 비트맵 크기가 바뀌어도 8×4 시트의 한 칸 전체를 사용한다.
-        val sprite = Sprite(
-            bitmap,
-            bitmap.width / 8,
-            bitmap.height / 4
+        maids = listOf(
+            createMaid(R.drawable.maid_test, 80f, 100f),
+            createMaid(R.drawable.orange_maid, 360f, 180f),
+            createMaid(R.drawable.sister_maid, 140f, 520f),
+            createMaid(R.drawable.yellow_maid, 520f, 620f)
         )
-
-        player = Player(sprite)
 
         gameLoop = GameLoop(holder, this)
         gameLoop.startLoop()
@@ -59,44 +53,64 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     fun update(delta: Long) {
-
-        directionChangeTimer -= delta
-
-        if (directionChangeTimer <= 0L) {
-            chooseRandomDirection()
-            directionChangeTimer = Random.nextLong(700L, 1_800L)
-        }
-
-        player.move(moveX, moveY, delta)
-        keepPlayerOnScreen()
+        maids.forEach { it.update(delta, width, height) }
     }
 
-    private fun chooseRandomDirection() {
-        val angle = Random.nextDouble(0.0, 2.0 * Math.PI)
-        moveX = cos(angle).toFloat()
-        moveY = sin(angle).toFloat()
-    }
-
-    private fun keepPlayerOnScreen() {
-        val maxX = (width - player.width).coerceAtLeast(0).toFloat()
-        val maxY = (height - player.height).coerceAtLeast(0).toFloat()
-
-        if (player.x <= 0f || player.x >= maxX) {
-            moveX = -moveX
+    private fun createMaid(resourceId: Int, startX: Float, startY: Float): MovingMaid {
+        val bitmap = BitmapFactory.decodeResource(resources, resourceId)
+        val sprite = Sprite(bitmap, bitmap.width / 8, bitmap.height / 4)
+        val player = Player(sprite).apply {
+            x = startX
+            y = startY
         }
-        if (player.y <= 0f || player.y >= maxY) {
-            moveY = -moveY
-        }
-
-        player.x = player.x.coerceIn(0f, maxX)
-        player.y = player.y.coerceIn(0f, maxY)
+        return MovingMaid(player)
     }
 
     fun render(canvas: Canvas) {
+        canvas.drawBitmap(background, null, Rect(0, 0, canvas.width, canvas.height), paint)
+        maids.forEach { it.draw(canvas) }
+    }
 
-        canvas.drawColor(Color.WHITE)
+    private class MovingMaid(private val player: Player) {
+        private var moveX = 0f
+        private var moveY = 0f
+        private var directionChangeTimer = 0L
 
-        player.draw(canvas)
+        init {
+            chooseRandomDirection()
+        }
+
+        fun update(delta: Long, screenWidth: Int, screenHeight: Int) {
+            directionChangeTimer -= delta
+            if (directionChangeTimer <= 0L) {
+                chooseRandomDirection()
+                directionChangeTimer = Random.nextLong(700L, 1_800L)
+            }
+
+            player.move(moveX, moveY, delta)
+            keepOnScreen(screenWidth, screenHeight)
+        }
+
+        fun draw(canvas: Canvas) {
+            player.draw(canvas)
+        }
+
+        private fun chooseRandomDirection() {
+            val angle = Random.nextDouble(0.0, 2.0 * Math.PI)
+            moveX = cos(angle).toFloat()
+            moveY = sin(angle).toFloat()
+        }
+
+        private fun keepOnScreen(screenWidth: Int, screenHeight: Int) {
+            val maxX = (screenWidth - player.width).coerceAtLeast(0).toFloat()
+            val maxY = (screenHeight - player.height).coerceAtLeast(0).toFloat()
+
+            if (player.x <= 0f || player.x >= maxX) moveX = -moveX
+            if (player.y <= 0f || player.y >= maxY) moveY = -moveY
+
+            player.x = player.x.coerceIn(0f, maxX)
+            player.y = player.y.coerceIn(0f, maxY)
+        }
     }
 
 }
